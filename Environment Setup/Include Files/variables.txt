@@ -1,0 +1,2 @@
+set vExcelPath = 'lib://Excel Files/';
+set vXMLPath = 'lib://XML Files/';
