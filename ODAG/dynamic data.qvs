@@ -1,0 +1,46 @@
+// DO NOT ALTER THIS SUBROUTINE
+SUB ExtendQVDWhere(Name, ValVarName)
+  LET T = Name & '_COLNAME';
+  LET ColName = $(T);
+  LET Values = $(ValVarName);
+  IF (len(Values) > 0) THEN
+        IF len(WHERE_PART) > 0 THEN
+        LET WHERE_PART = '$(WHERE_PART) AND mixmatch([$(ColName)],$(Values) )';
+    ELSE
+        LET WHERE_PART = ' WHERE mixmatch([$(ColName)],$(Values))';
+    ENDIF
+  ENDIF
+END SUB;
+
+// DO NOT ALTER THIS SUBROUTINE
+SUB ExtendSQLWhere(Name, ValVarName)
+  LET T = Name & '_COLNAME';
+  LET ColName = $(T);
+  LET Values = $(ValVarName);
+  IF (len(Values) > 0) THEN
+  	IF len(WHERE_PART) > 0 THEN
+    	LET WHERE_PART = '$(WHERE_PART) AND $(ColName) IN ( $(Values) )';
+    ELSE
+    	LET WHERE_PART = ' WHERE $(ColName) IN ( $(Values) )';
+    ENDIF
+  ENDIF
+END SUB;
+
+// DO NOT ALTER THIS SUBROUTINE
+SUB BuildValueList(VarName, TableName, ColName, QuoteChrNum)
+  IF ($(QuoteChrNum) = 0) THEN
+    LET LOADEXPR = 'Concat($(ColName),' & chr(39) & ',' & chr(39) & ') AS CombinedData';
+  ELSE
+    LET CHREXPR = ' chr(' & '$(QuoteChrNum)' & ') ';
+    LET LOADEXPR = 'Concat( $(CHREXPR) & $(ColName) & $(CHREXPR)' & ',' & chr(39) & ',' & chr(39) & ') AS CombinedData';
+  ENDIF
+  _TempTable:
+  LOAD $(LOADEXPR) Resident $(TableName);
+  Let vNoOfRows = NoOfRows('_TempTable');
+  IF $(vNoOfRows)> 0 THEN
+    LET $(VarName) = Peek('CombinedData',0,'_TempTable');
+  ENDIF
+  drop table _TempTable;
+  drop table '$(TableName)';
+END SUB;
+
