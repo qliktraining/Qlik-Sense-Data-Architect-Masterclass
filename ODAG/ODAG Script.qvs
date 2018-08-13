@@ -1,0 +1,75 @@
+// CHANGE 1: Update these blocks of INLINE table loads to correspond to the names of the fields from your
+//           selection app.  The contents inside the $() in the record body of the INLINE load statements
+//           must match the names of the fields from your selection app that the user makes selections on.
+//           If the database column name (lor QVD field name) for any of the selection fields has a different
+//           name, you need to alter the right hand side of the SET xxxx_COLNAME statement to reflect that
+//		     field's corresponding database column (or QVD field) name;
+//
+//            All fields for On Demand are prefixed with od and the following to indicate selected or associated
+//            values
+//              ods = Selected values
+//              odo  = Associated values
+//              odso = Selected/associated values
+//              od = ods = Selected values
+//
+// With the INLINE table form of ODAG binding, the "quote" and "delimiter" options are used to suppress the OagService's
+// default behavior of wrapping each value with single quotation marks and inserting a comma between each value because
+// we want the values to be injected into the INLINE tables as a literal list only separated by newlines.  This is
+// because the local BuildValueList subroutine takes care of comma separating the values and quote wrapping in those
+// cases that need it (passing 39 for the 4th parameter of BuildValueList causes it to wrap each value with single
+// quotes whereas passing 0 suppresses quote wrapping which is what we do in the case of numeric values since SQL
+// doesn't require numbers to be quoted).
+
+SET OIRDERID='';
+OdagBinding:
+LOAD * INLINE [
+VAL
+$(odso_OrderID){"quote": "", "delimiter": ""}
+];
+SET ORDERID_COLNAME='OrderID';
+CALL BuildValueList('ORDERID', 'OdagBinding', 'VAL', 0);		// 39 is for single quote wrapping values
+
+SET CUSTOMERID='';
+OdagBinding:
+LOAD * INLINE [
+VAL
+$(odso_CustomerRecordCounter){"quote": "", "delimiter": ""}
+];
+SET CUSTOMERID_COLNAME='CustomerRecordCounter';
+ 
+CALL BuildValueList('CUSTOMERID', 'OdagBinding', 'VAL', 39);		// 39 is for single quote wrapping values
+
+
+// CHANGE # 2: Insert your SQL connection's CONNECT statement here if using a SQL database source. Note that if you switch
+//             to using a SQL source, the call to ExtendQVDWhere in the FOR EACH loop below should be replaced with
+//             a call to the ExtendSQLWhere subroutine. The LOAD statements must also be changed to use SELECT.
+
+
+// CHANGE #3:  Alter this with a leading 'WHERE <condition>' if you want your main FLIGHT table load statement (below)
+//             to have a non-changing WHERE clause in addition to the clauses that will be inserted
+//             by the selection app (it is fine to leave it as is).
+
+SET WHERE_PART = '';
+
+// CHANGE 4: Update the list of field names here in the FOR EACH list below to reflect the names of the fields that are
+//           bound to your selection app in the INLINE binding above.
+//           Note that in this case we're using ExtendQVDWhere which uses Qlik's "mixmatch" function to build a
+//           WHERE clause to test whether the inbound records match the conditions.  If modifying this template to
+//           to filter on a SQL SELECT statement, you will need to replace the call to ExtendQVDWhere with a call to
+//           ExtendSQLWhere (for more details on converting to using SQL, see "Note" in "Change # 5" below).
+
+FOR EACH fldname IN 'ORDERID', 'CUSTOMERID' 
+  LET vallist = $(fldname);
+  IF (IsNull(vallist)) THEN
+    LET vallist = '';
+  ENDIF
+  IF (len(vallist) > 0) THEN
+    CALL ExtendQVDWhere('$(fldname)','vallist');
+//    CALL ExtendSQLWhere('$(fldname)','vallist');  // use this version for SQL
+  ENDIF
+NEXT fldname
+
+
+TRACE Generated WHERE clause: ;
+TRACE $(WHERE_PART);
+
